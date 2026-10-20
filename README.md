@@ -26,4 +26,10 @@ Swagger: `http://localhost:8000/docs`
 - `POST /api/requirements`
 - `GET /api/backend-health`
 
+`GET /api/backend-health` returns HTTP 200 when the auth backend responds,
+including when that backend returns an error status; the upstream status and
+body are provided in `status` and `body`. If the health check cannot obtain a
+response, this API returns HTTP 502 with `status: 0` and a generic failure
+message in `body`.
+
 La rama `main` contiene autenticación débil, SQL concatenado, manejo inseguro de nombres de archivo, conexión global, lógica monolítica y dependencias con CVEs.

@@ -10,6 +10,7 @@ from typing import Any
 import urllib3
 from fastapi import Body, Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 LEGACY_SECRET = "WORKSHOP_SECRET_2026"
 
@@ -111,14 +112,25 @@ def create_app(db_path: str | None = None, upload_dir: str | None = None) -> Fas
         target.write_bytes(content)
         return {"owner": identity["username"], "fileName": file.filename, "storedAt": str(target), "size": len(content)}
 
-    @app.get("/api/backend-health")
-    def backend_health(identity: dict[str, str] = Depends(legacy_identity)) -> dict[str, Any]:
+    @app.get(
+        "/api/backend-health",
+        response_model=dict[str, Any],
+        responses={502: {"description": "Backend health check failed"}},
+    )
+    def backend_health(identity: dict[str, str] = Depends(legacy_identity)) -> dict[str, Any] | JSONResponse:
         url = os.getenv("AUTH_HEALTH_URL", "http://localhost:8080/q/health")
         try:
             response = urllib3.PoolManager().request("GET", url, timeout=3.0)
             return {"requestedBy": identity["username"], "status": response.status, "body": response.data.decode("utf-8")}
-        except Exception as error:
-            return {"requestedBy": identity["username"], "status": 0, "body": str(error)}
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "requestedBy": identity["username"],
+                    "status": 0,
+                    "body": "Backend health check failed",
+                },
+            )
 
     @app.on_event("shutdown")
     def close_connection() -> None:
